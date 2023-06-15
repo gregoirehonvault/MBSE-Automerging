@@ -1,3 +1,5 @@
+
+oui
 tr t0 [0,w[ p0 -> p1 p0
 tr t3 [0,w[ p1 p2 -> p0
 tr t1 [0,w[ -> p2 p1
