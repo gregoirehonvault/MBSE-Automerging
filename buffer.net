@@ -1,0 +1,11 @@
+tr t0 [0,w[ p0 -> p1 p0
+tr t3 [0,w[ p1 p2 -> p0
+tr t1 [0,w[ -> p2 p1
+tr t2 [0,w[ p1 -> p0
+tr t4 [0,w[ -> p1 p2
+tr t5 [0,w[ -> p6 p7
+pl p1 : test
+pl p2 : label2 (2)
+an n0 1 {une note}
+net buffer
+test
