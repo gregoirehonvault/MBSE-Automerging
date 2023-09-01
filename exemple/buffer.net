@@ -1,0 +1,18 @@
+tr t0 : {User Engagement} [0,w[ p0 p3 p1?3 -> p0 p1
+tr t3 : {Sensor Activation} [0,w[ p2 p1 -> p0
+tr nom_tr1 : {System Wake-up} [0,w[ -> p1 p2
+tr t2 : {Timer Completion} [0,8[ p1 p2*4 -> p0
+tr t4 : {External Signal Received} [0,w[ ->
+pl p1 (4)
+pl p2 : label2 (2)
+pl p0 : lab
+an n0 1 {t0 - Through user interaction, the system transitions into the 'U67Start' state, enabling it to effectively respond to the user's actions.}
+an n3 1 {t3 - When a sensor detects an input or a change in state, it triggers the transition to the 'Active' state. In this state, the system reacts based on the information obtained from the sensor.}
+an n2 1 {t2 - When a countdown timer reaches zero, it initiates the transition to the 'Active' state. In this state, the system enters a scheduled or periodic activity phase.}
+an n4 1 {t4 - Upon receiving an external signal, such as communication from another system, the system enters the 'Active' state. In this state, it processes or responds to the received signal.}
+an n6 1 {nom_tr1 - When the system emerges from a sleep or standby state, it transitions into the 'Active' state, becoming ready to resume normal operation.}
+an n11 1 {p1 - oui en fait 1}
+an n12 1 {p2 - pas du tout 2}
+an n13 1 {p0 - carrèment 0}
+an n14 1 {p3 - diaboliquement 3}
+net buffer

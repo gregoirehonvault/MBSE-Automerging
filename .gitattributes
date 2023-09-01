@@ -1,0 +1,2 @@
+*.xml merge=custom
+*.net merge=tina

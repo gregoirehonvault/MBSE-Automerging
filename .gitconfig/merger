@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys
+from lxml import etree
+from xmlsort import trier_file
+
+
+line = 0
+
+conflict = False
+
+def merge_xml_files(ancestor_file, base_file, remote_file):
+    # Charger les fichiers XML
+    ancestor_tree = etree.parse(ancestor_file)
+    base_tree = etree.parse(base_file)
+    remote_tree = etree.parse(remote_file)
+
+    # Obtenir les racines des arbres XML
+    ancestor_root = ancestor_tree.getroot()
+    base_root = base_tree.getroot()
+    remote_root = remote_tree.getroot()
+
+    # Fusionner les espaces de noms
+    merged_nsmap = merge_nsmap(ancestor_tree.getroot().nsmap, base_tree.getroot().nsmap, remote_tree.getroot().nsmap)
+    
+
+
+    # Fusionner les fichiers XML
+    merged_element = merge_elements(ancestor_root, base_root, remote_root, merged_nsmap)
+
+
+    # Fusionner les attributs
+    merge_attributes(ancestor_root, base_root, remote_root, merged_element)
+
+    merged_tree = etree.ElementTree(merged_element)
+
+    # Renommer à l'aide des espaces de noms fusionnés
+    for element in merged_tree.iter():
+        if element.tag[0] == "{":
+            ns, tag = element.tag[1:].split("}")
+            if ns in merged_nsmap:
+                element.tag = "{" + merged_nsmap[ns] + "}" + tag
+
+    
+
+    # Enregistrer le fichier final résultant de la fusion
+    merged_tree.write("de.xml", pretty_print=True, encoding="utf-8")
+
+
+
+def merge_nsmap(msmap_ancestor, nsmap_base, nsmap_remote):
+    global conflict
+    merged_nsmap = {}
+    for key, value in nsmap_base.items():
+        if key not in nsmap_remote and key not in msmap_ancestor:
+            merged_nsmap[key] = value
+
+    for key, value in nsmap_remote.items():
+        if key not in nsmap_base and key not in msmap_ancestor:
+            merged_nsmap[key] = value
+        elif key in nsmap_base:
+            if nsmap_base[key] == value:
+                merged_nsmap[key] = value
+            elif key in msmap_ancestor:
+                if msmap_ancestor[key] == value:
+                    merged_nsmap[key] = nsmap_base[key]
+                elif msmap_ancestor[key] == nsmap_base[key]:
+                    merged_nsmap[key] = value
+                else:
+                    merged_nsmap[key] = "!!! conflict : base --- " + nsmap_base[key] + " ||||||| value --- "  + value + "!!!"
+                    conflict = True
+            else:
+                merged_nsmap[key] = "!!! conflict : base --- " + nsmap_base[key] + " ||||||| value --- "  + value + "!!!"
+                conflict = True
+
+    return merged_nsmap
+
+
+
+def merge_elements(ancestor_element, base_element, remote_element, merged_nsmap):
+    
+    # Initialiser un nouvel élément fusionné, sans rien copier
+    merged_element = etree.Element("", nsmap=merged_nsmap)
+
+
+    # Parcourir les éléments de la base 
+    for base_child in base_element:
+        # Chercher un élément correspondant dans l'ancêtre et le fichier distant
+        ancestor_child = find_matching_element(base_child, ancestor_element, "name")
+        remote_child = find_matching_element(base_child, remote_element, "name")
+        
+        if ancestor_child is None and remote_child is None:
+            merged_element.append(base_child)
+
+    # Parcourir les éléments du fichier distant
+    for remote_child in remote_element:
+        ancestor_child = find_matching_element(remote_child, ancestor_element, "name")
+        base_child = find_matching_element(remote_child, base_element, "name")
+        if ancestor_child is None and base_child is None:
+            merged_element.append(remote_child)
+        elif base_child is not None and ancestor_child is None:
+            merged_child = merge_elements(ancestor_child, base_child, remote_child, merged_nsmap)
+            merge_attributes(ancestor_child, base_child, remote_child, base_child)
+            merged_element.append(merged_child)
+        elif base_child is not None and ancestor_child is not None:
+            merged_child = merge_elements(ancestor_child, base_child, remote_child, merged_nsmap)
+            merge_attributes(ancestor_child, base_child, remote_child, merged_child)
+            merged_element.append(merged_child)
+    return merged_element
+
+def find_matching_element(element, parent_element, attribute_name):
+    for child in parent_element:
+        if child.attrib.get(attribute_name) == element.attrib.get(attribute_name):
+            return child
+    return None
+
+def merge_attributes(ancestor_element, base_element, remote_element, merged_element):
+    global conflict
+    if ancestor_element is None:
+
+        for key, value in base_element.attrib.items():
+            print(key)
+            if key not in remote_element.attrib:
+                merged_element.attrib[key] = value
+
+        for key, value in remote_element.attrib.items():
+            if key not in base_element.attrib:
+                merged_element.attrib[key] = value
+            elif base_element.attrib[key] != value:
+                merged_element.attrib[key] = "!!! conflict : base --- " + base_element.attrib[key] + " ||||||| value --- "  + value + "!!!"
+                conflict = True
+            else :
+                merged_element.attrib[key] = value
+    else:
+
+        for key, value in base_element.attrib.items():
+            if key not in remote_element.attrib and key not in ancestor_element.attrib:
+                merged_element.attrib[key] = value
+
+        for key, value in remote_element.attrib.items():
+            if key not in base_element.attrib and key not in ancestor_element.attrib:
+                merged_element.attrib[key] = value
+            elif key in base_element.attrib:
+                if base_element.attrib[key] == value:
+                    merged_element.attrib[key] = value
+                elif key in ancestor_element.attrib:
+                    if ancestor_element.attrib[key] == value:
+                        merged_element.attrib[key] = base_element.attrib[key]
+                    elif ancestor_element.attrib[key] == base_element.attrib[key]:
+                        merged_element.attrib[key] = value
+                    else:
+                        merged_element.attrib[key] = "!!! conflict : base --- " + base_element.attrib[key] + " ||||||| value --- "  + value + "!!!"
+                        conflict = True
+                else:
+                    merged_element.attrib[key] = "!!! conflict : base --- " + base_element.attrib[key] + " ||||||| value --- "  + value + "!!!"
+                    conflict = True
+
+
+            
+
+
+
+
+if __name__ == "__main__":
+    # Arguments passés par Git : base, local, remote, merged
+    base_file = sys.argv[1]
+    local_file = sys.argv[2]
+    remote_file = sys.argv[3]
+    # Appeler la fonction de fusion XML
+    merge_xml_files(base_file, local_file, remote_file)
+
+    # Trier le fichier fusionné avec xmlsort.py
+    trier_file("demo_m.ecore")
+
+    
+
+    if conflict:
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
